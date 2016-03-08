@@ -5,6 +5,7 @@ Licence: GPLv3
 """
 import os
 from werkzeug import secure_filename
+import xlrd
 
 from flask import url_for, request, redirect, render_template, flash, g, session, send_from_directory
 from flask.ext.login import login_user, logout_user, current_user, login_required
@@ -14,7 +15,8 @@ from models import User
 
 #OS environment to pick directory
 UPLOAD_FOLDER = '/home/ryan/tmp'
-app.config['ALLOWED_EXTENSIONS'] = set(['txt','csv', 'xls', 'png', 'jpg', 'jpeg', 'gif'])
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 #Max 16MB files
+app.config['ALLOWED_EXTENSIONS'] = set(['xlsx','csv', 'xls'])
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 def allowed_file(filename):
@@ -27,10 +29,17 @@ def upload():
     print "Upload function"
     # Get the name of the uploaded file
     file = request.files['file']
+
+    sheet_name = "Sheet1"
+    start_row  = 5
+    start_col  = 0
+
     # Check if the file is one of the allowed types/extensions
     if file and allowed_file(file.filename):
         # Make the filename safe, remove unsupported chars
         filename = secure_filename(file.filename)
+
+
         # Move the file form the temporal folder to
         # the upload folder we setup
         print os.path
@@ -38,7 +47,22 @@ def upload():
         file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
         # Redirect the user to the uploaded_file route, which
         # will basicaly show on the browser the uploaded file
-        return redirect(url_for('uploaded_file', filename=filename))
+
+        xls1  = xlrd.open_workbook(app.config['UPLOAD_FOLDER']+"//"+file.filename)
+        for sheet in xls1.sheet_names(): #iterate through sheets of workbook
+            print sheet
+            sheet1 = xls1.sheet_by_name(sheet)
+
+            MaxRows = sheet1.nrows
+
+            MaxColumns = sheet1.ncols
+
+            for rownum in range(start_row,MaxRows):
+                print sheet1.cell_value(rownum, 1)
+
+        #don't need to save
+        #return redirect(url_for('uploaded_file', filename=filename))
+        return "done" 
     else:
         print "invalid file type, handle error"
 
